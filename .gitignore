@@ -1,0 +1,12 @@
+node_modules/
+dist/
+release/
+*.log
+.env
+.env.local
+*.env.*
+Asteroid-ProofVault/
+*.pem
+*.key
+credentials.json
+service-account-*.json

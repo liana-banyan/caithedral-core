@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "lib": ["ES2020", "DOM"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "outDir": "./dist/main",
+    "rootDir": "./src",
+    "sourceMap": true
+  },
+  "include": [
+    "src/main/**/*",
+    "src/eblet/**/*",
+    "src/celpane/**/*",
+    "src/provenance/**/*",
+    "src/caithedral/**/*",
+    "src/pheromone/**/*",
+    "src/wrasse/**/*",
+    "src/mcp/**/*",
+    "src/autobaton/**/*",
+    "src/banyan_metric/**/*"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

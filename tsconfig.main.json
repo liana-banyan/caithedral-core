@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist/main",
+    "rootDir": "./src"
+  },
+  "include": [
+    "src/main/**/*",
+    "src/eblet/**/*",
+    "src/celpane/**/*",
+    "src/provenance/**/*",
+    "src/caithedral/**/*",
+    "src/pheromone/**/*",
+    "src/wrasse/**/*",
+    "src/mcp/**/*",
+    "src/autobaton/**/*",
+    "src/banyan_metric/**/*"
+  ]
+}
