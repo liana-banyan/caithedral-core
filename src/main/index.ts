@@ -38,6 +38,8 @@ import { MCPRouter } from '../mcp/index.js';
 import { AutoBatonCVT } from '../autobaton/index.js';
 import { BanyanMetricLedger } from '../banyan_metric/index.js';
 import { MoneyPennyMeter } from '../banyan_metric/money_penny.js';
+import { SubstratedFoldersManager } from './substrated_folders.js';
+import { getCfpServer } from '../mcp/federation.js';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -147,6 +149,7 @@ let mcpRouter: MCPRouter | null = null;
 let autoBaton: AutoBatonCVT | null = null;
 let bmLedger: BanyanMetricLedger | null = null;
 let mpMeter: MoneyPennyMeter | null = null;
+let substratedFolders: SubstratedFoldersManager | null = null;
 
 // ─── cai:// deep-link protocol ────────────────────────────────────────────────
 
@@ -178,6 +181,14 @@ async function initSubstrate(): Promise<void> {
   autoBaton = new AutoBatonCVT();
   bmLedger = new BanyanMetricLedger();
   mpMeter = new MoneyPennyMeter(`session_${Date.now()}`, 'BP051');
+
+  // v0.1.8 — Substrated Folders + CFP federation
+  substratedFolders = new SubstratedFoldersManager();
+  substratedFolders.setIndex(caithedralIndex);
+  substratedFolders.startAll();
+
+  const cfp = getCfpServer();
+  cfp.startDiscovery();
 
   console.log(`[CAI™ Core] Substrate initialized — ${caithedralIndex.size} records indexed`);
 }
@@ -398,6 +409,37 @@ function registerIpcHandlers(): void {
   ipcMain.handle('moneyPenny:getDualView', () => mpMeter?.getDualView() ?? null);
   ipcMain.handle('moneyPenny:getTotals', () => MoneyPennyMeter.getTotals());
 
+  // ── Substrated Folders (v0.1.8) ──────────────────────────────────────────────
+  ipcMain.handle('cai-core:list-substrated-folders', () => substratedFolders?.list() ?? []);
+
+  ipcMain.handle('cai-core:add-substrated-folder', async (_event, folderPath?: string) => {
+    let targetPath = folderPath;
+    if (!targetPath) {
+      const result = await dialog.showOpenDialog({
+        properties: ['openDirectory'],
+        title: 'Add Folder to CAI™ Core Substrate',
+        buttonLabel: 'Substrate This Folder',
+      });
+      if (result.canceled || !result.filePaths[0]) return { ok: false, paths: substratedFolders?.list() ?? [] };
+      targetPath = result.filePaths[0];
+    }
+    return substratedFolders?.add(targetPath) ?? { ok: false, paths: [] };
+  });
+
+  ipcMain.handle('cai-core:remove-substrated-folder', (_event, folderPath: string) =>
+    substratedFolders?.remove(folderPath) ?? { ok: false, paths: [] },
+  );
+
+  ipcMain.handle('cai-core:substrated-manifest', () => substratedFolders?.getManifest() ?? []);
+
+  // ── CFP Federation (v0.1.8) ───────────────────────────────────────────────────
+  ipcMain.handle('cfp:getManifest', () => getCfpServer().getLocalManifest());
+  ipcMain.handle('cfp:getPeers', () => getCfpServer().getPeers());
+  ipcMain.handle('cfp:federateManifest', (_event, peerId: string, cathedralId: string) =>
+    getCfpServer().federateManifest(peerId, cathedralId),
+  );
+  ipcMain.handle('cfp:getCathedralId', () => getCfpServer().getCathedralId());
+
   // ── App / shell ───────────────────────────────────────────────────────────────
   ipcMain.handle('app:version', () => app.getVersion());
   ipcMain.handle('app:openExternal', (_event, url: string) => {
@@ -457,6 +499,13 @@ app.on('window-all-closed', () => {
   // Close MoneyPenny™ meter session on exit
   try {
     mpMeter?.closeSession();
+  } catch {
+    // Non-fatal
+  }
+  // Stop substrated folder watchers + CFP discovery
+  try {
+    substratedFolders?.stopAll();
+    getCfpServer().stopDiscovery();
   } catch {
     // Non-fatal
   }

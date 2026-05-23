@@ -1,7 +1,7 @@
 # CAI™ Core Trademark Use Policy
 
 **Effective Date:** 2026-05-22
-**Version:** 1.1 (BP051 NOVACULA · cai-core v0.1.7)
+**Version:** 1.2 (KniPr006 · cai-core v0.1.8)
 
 ## Trademark Notice
 
@@ -44,7 +44,7 @@ Ubiquity is welcome. Weaponization is not.
 If you distribute a modified version of this software:
 - Retain the SSPL license at repository root (required by license terms)
 - You may continue using "Powered by CAI™" attribution for the substrate engine
-- Rename the product itself (not "CAI Core" or "Caithedral" as primary product name)
+- Rename the product itself (not "CAI™ Core" or "Caithedral™" as primary product name)
   unless you obtain explicit written permission from Liana Banyan Corporation
 
 ## Contact

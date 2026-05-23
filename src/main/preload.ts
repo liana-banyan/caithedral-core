@@ -80,6 +80,22 @@ contextBridge.exposeInMainWorld('caiCore', {
     markFirstRunComplete: () => ipcRenderer.invoke('app:markFirstRunComplete'),
   },
 
+  // ── Substrated Folders (v0.1.8) ──────────────────────────────────────────────
+  substratedFolders: {
+    list: () => ipcRenderer.invoke('cai-core:list-substrated-folders') as Promise<string[]>,
+    add: (folderPath?: string) => ipcRenderer.invoke('cai-core:add-substrated-folder', folderPath) as Promise<{ ok: boolean; paths: string[] }>,
+    remove: (folderPath: string) => ipcRenderer.invoke('cai-core:remove-substrated-folder', folderPath) as Promise<{ ok: boolean; paths: string[] }>,
+    getManifest: () => ipcRenderer.invoke('cai-core:substrated-manifest'),
+  },
+
+  // ── CFP Federation (v0.1.8) ───────────────────────────────────────────────────
+  cfp: {
+    getManifest: () => ipcRenderer.invoke('cfp:getManifest'),
+    getPeers: () => ipcRenderer.invoke('cfp:getPeers'),
+    federateManifest: (peerId: string, cathedralId: string) => ipcRenderer.invoke('cfp:federateManifest', peerId, cathedralId),
+    getCathedralId: () => ipcRenderer.invoke('cfp:getCathedralId') as Promise<string>,
+  },
+
   // ── Deep-link events ─────────────────────────────────────────────────────────
   onDeepLink: (handler: (payload: { url: string }) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, payload: { url: string }) => handler(payload);

@@ -1,13 +1,13 @@
 /**
  * CAI™ Core — Renderer entry
- * v0.1.7 · BP051 NOVACULA SEG-CC-7
+ * v0.1.8 · KniPr006
  *
  * Strip rules applied:
  *   - admin/, ambassador/, project/ routes deleted
  *   - FederationTab, FederationPeerMeshPane deleted
  *   - TrialBanner, ShareCard, AuthGate, AMPLIFYDashboard deleted
- *   - Mnemosyne UI labels → CAI Core
- *   - Conjunction Window renamed: "CAI Core Conjunction"
+ *   - Mnemosyne UI labels → CAI™ Core
+ *   - Conjunction Window renamed: "CAI™ Core Conjunction"
  */
 
 import React, { useState, useEffect, Suspense } from 'react';
