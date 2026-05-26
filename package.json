@@ -1,11 +1,32 @@
 {
-  "name": "cai-core",
-  "version": "0.1.9",
-  "description": "CAI™ Core — Cooperative AI Memory Architecture · Reference Implementation · Designed to Be Copied",
+  "name": "caithedral-core",
+  "version": "0.2.0",
+  "description": "Caithedral™ Core — Cooperative AI Memory Architecture · Reference Implementation · Designed to Be Copied",
   "homepage": "https://mnemosynec.ai",
   "private": false,
   "license": "SSPL-1.0",
-  "main": "dist/main/index.js",
+  "main": "dist/main/main/index.js",
+  "exports": {
+    ".": "./dist/main/main/index.js",
+    "./tools/soccerball": "./dist/main/tools/soccerball_tools.js",
+    "./tools/pearl": "./dist/main/tools/pearl_tools.js",
+    "./tools/eblit": "./dist/main/tools/eblit_tools.js",
+    "./tools/substrace": "./dist/main/tools/substrace_tools.js",
+    "./tools/quilt": "./dist/main/tools/quilt_tools.js",
+    "./tools/substrate_address": "./dist/main/tools/substrate_address.js",
+    "./tools/soccerball.ts": "./src/tools/soccerball_tools.ts",
+    "./tools/pearl.ts": "./src/tools/pearl_tools.ts",
+    "./tools/eblit.ts": "./src/tools/eblit_tools.ts",
+    "./tools/substrace.ts": "./src/tools/substrace_tools.ts",
+    "./tools/quilt.ts": "./src/tools/quilt_tools.ts",
+    "./tools/substrate_address.ts": "./src/tools/substrate_address.ts",
+    "./src/tools/soccerball_tools.ts": "./src/tools/soccerball_tools.ts",
+    "./src/tools/pearl_tools.ts": "./src/tools/pearl_tools.ts",
+    "./src/tools/eblit_tools.ts": "./src/tools/eblit_tools.ts",
+    "./src/tools/substrace_tools.ts": "./src/tools/substrace_tools.ts",
+    "./src/tools/quilt_tools.ts": "./src/tools/quilt_tools.ts",
+    "./src/tools/substrate_address.ts": "./src/tools/substrate_address.ts"
+  },
   "scripts": {
     "dev": "concurrently -k \"npm run dev:renderer\" \"wait-on http://127.0.0.1:5173 && npm run dev:main\"",
     "dev:renderer": "vite --config vite.renderer.config.ts",
@@ -19,12 +40,16 @@
     "test:smoke": "tsc -p tsconfig.json --noEmit && node --loader ts-node/esm tests/smoke.test.ts"
   },
   "keywords": [
+    "caithedral-core",
     "cai-core",
     "cooperative-ai",
     "memory-architecture",
     "caithedral",
     "eblet",
-    "banyan-metric"
+    "banyan-metric",
+    "speckle",
+    "soccerball",
+    "pearl"
   ],
   "author": "Liana Banyan Corporation",
   "repository": {
@@ -58,8 +83,8 @@
     "ws": "^8.20.1"
   },
   "build": {
-    "appId": "com.lianabanyan.caicore",
-    "productName": "CAI Core",
+    "appId": "com.lianabanyan.caithedralcore",
+    "productName": "Caithedral Core",
     "icon": "assets/app-icon",
     "copyright": "Copyright © 2026 Liana Banyan Corporation",
     "asar": true,
@@ -120,21 +145,21 @@
       "verifyUpdateCodeSignature": false
     },
     "nsis": {
-      "artifactName": "CAI-Core-Setup-${version}.${ext}",
+      "artifactName": "Caithedral-Core-Setup-${version}.${ext}",
       "oneClick": false,
       "perMachine": false,
       "allowElevation": true,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "CAI Core",
+      "shortcutName": "Caithedral Core",
       "include": "assets/installer.nsh",
       "license": "assets/LICENSE.rtf",
       "deleteAppDataOnUninstall": false,
       "runAfterFinish": true
     },
     "portable": {
-      "artifactName": "CAI-Core-Portable-${version}.${ext}"
+      "artifactName": "Caithedral-Core-Portable-${version}.${ext}"
     },
     "mac": {
       "target": [
@@ -162,7 +187,7 @@
       "identity": null
     },
     "dmg": {
-      "title": "CAI Core ${version}",
+      "title": "Caithedral Core ${version}",
       "window": {
         "width": 540,
         "height": 380
@@ -205,8 +230,8 @@
       ],
       "category": "Office",
       "maintainer": "Liana Banyan Corporation <licensing@mnemosynec.ai>",
-      "synopsis": "CAI™ Core — Cooperative AI Memory Architecture · Reference Implementation",
-      "description": "CAI™ Core runs the complete cooperative AI memory substrate: Caithedral™ retrieval, Pheromone substrate, Cross-Vendor symmetric MCP, Banyan Metric™ scoring. No cloud account. No central server. SSPL-1.0 + Cooperative Patent Pledge #2260."
+      "synopsis": "Caithedral™ Core — Cooperative AI Memory Architecture · Reference Implementation",
+      "description": "Caithedral™ Core runs the complete cooperative AI memory substrate: Caithedral™ retrieval, Pheromone substrate, Cross-Vendor symmetric MCP, Banyan Metric™ scoring. No cloud account. No central server. SSPL-1.0 + Cooperative Patent Pledge #2260."
     },
     "deb": {
       "packageCategory": "utils",
