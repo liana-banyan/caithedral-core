@@ -63,17 +63,30 @@ async function runProof(): Promise<void> {
   // ------------------------------------------------------------------
   // Phase 0: Credential preflight
   // ------------------------------------------------------------------
-  console.log("\n[Phase 0] Credential preflight");
-  const credPath = process.env["GOOGLE_APPLICATION_CREDENTIALS"];
+  console.log("\n[Phase 0] Credential preflight (KEYLESS — no SA key file)");
+  const legacyKeyEnv = process.env["GOOGLE_APPLICATION_CREDENTIALS"];
+  const impersonateSa = process.env["GOOGLE_CLOUD_DNS_IMPERSONATE_SA"];
   const projectId = process.env["GCP_PROJECT_ID"] ?? "lianabanyan-403dc";
   const managedZoneHint = process.env["GCP_DNS_MANAGED_ZONE"] ?? "(auto-discover)";
+
   log("GCP project", projectId);
   log("GCP managed zone hint", managedZoneHint);
-  if (credPath) {
-    log("GOOGLE_APPLICATION_CREDENTIALS", credPath);
-    pass(`SA key file configured at ${credPath}`);
+
+  if (legacyKeyEnv) {
+    console.log(`  ⚠  GOOGLE_APPLICATION_CREDENTIALS is set → CREDENTIAL SHADOWING RISK`);
+    console.log(`     Legacy SA key file will intercept ADC. That SA lacks dns.admin.`);
+    console.log(`     FIX: $env:GOOGLE_APPLICATION_CREDENTIALS = $null  (session-only, safe)`);
+    fail(`GOOGLE_APPLICATION_CREDENTIALS must be unset before keyless run`);
+    process.exit(1);
   } else {
-    console.log("  ⚡ GOOGLE_APPLICATION_CREDENTIALS not set — will try gcloud fallback");
+    pass("GOOGLE_APPLICATION_CREDENTIALS is unset — ADC path clear");
+  }
+
+  if (impersonateSa) {
+    pass(`Impersonation SA configured (Path A — least privilege)`);
+    log("GOOGLE_CLOUD_DNS_IMPERSONATE_SA length", impersonateSa.length);
+  } else {
+    console.log("  ⚡ GOOGLE_CLOUD_DNS_IMPERSONATE_SA not set — will use direct ADC (Path B)");
   }
 
   // ------------------------------------------------------------------
@@ -131,16 +144,17 @@ async function runProof(): Promise<void> {
   log("Emitting outer SID to s.lianabanyan.com", outerSid);
   const emitOuter: GcpEmitResult = await gcp_emit_soccerball(outerSid, "s");
   if (emitOuter.ok) {
-    pass(`s.lianabanyan.com TXT record created (managed_zone=${emitOuter.managed_zone})`);
+    pass(`s.lianabanyan.com TXT record created (managed_zone=${emitOuter.managed_zone}, cred=${emitOuter.cred_path})`);
     log("Outer emit result", {
       name: emitOuter.name,
       record_id: emitOuter.record_id,
       managed_zone: emitOuter.managed_zone,
+      cred_path: emitOuter.cred_path,
     });
   } else {
     fail(`Failed to emit outer SID: ${emitOuter.error}`);
-    if (emitOuter.error?.includes("roles/dns.admin") || emitOuter.error?.includes("403")) {
-      console.error("  → IAM: firebase SA needs roles/dns.admin — see google_dns_emit.ts header");
+    if (emitOuter.error?.includes("Token Creator") || emitOuter.error?.includes("403")) {
+      console.error("  → Wait 2-5 min: Token Creator IAM grant may not yet be active");
     }
   }
 
@@ -229,6 +243,7 @@ async function runProof(): Promise<void> {
   console.log(`Outer SID (s.lianabanyan.com TXT):   ${outerSid}`);
   console.log(`Inner SID (0.s.lianabanyan.com TXT): ${innerSid}`);
   console.log(`GCP managed zone:      ${emitOuter.managed_zone || emitInner.managed_zone || "unknown"}`);
+  console.log(`Cred path:             ${emitOuter.cred_path || emitInner.cred_path || "N/A"}`);
   console.log(`Outer record_id:       ${emitOuter.record_id || "N/A"}`);
   console.log(`Inner record_id:       ${emitInner.record_id || "N/A"}`);
   console.log(`DoH outer resolved:    ${outerResolved}`);
@@ -243,7 +258,7 @@ async function runProof(): Promise<void> {
     console.log("FOR THE KEEP. 🌊⚓⚽");
   } else {
     console.log("RESULT: PARTIAL — see ✗ FAIL lines above for blockers");
-    console.log("Most likely blocker: IAM — grant roles/dns.admin to SA (see google_dns_emit.ts header)");
+    console.log("Keyless path: ensure GOOGLE_APPLICATION_CREDENTIALS is unset + GOOGLE_CLOUD_DNS_IMPERSONATE_SA is set");
   }
   console.log("=".repeat(72));
 }
