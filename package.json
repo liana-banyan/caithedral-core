@@ -1,6 +1,6 @@
 {
   "name": "caithedral-core",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Caithedral™ Core — Cooperative AI Memory Architecture · Reference Implementation · Designed to Be Copied",
   "homepage": "https://mnemosynec.ai",
   "private": false,
@@ -14,7 +14,9 @@
     "./tools/substrace": "./dist/main/tools/substrace_tools.js",
     "./tools/quilt": "./dist/main/tools/quilt_tools.js",
     "./tools/substrate_address": "./dist/main/tools/substrate_address.js",
+    "./tools/dag_soccerball": "./dist/main/tools/dag_soccerball_tools.js",
     "./tools/soccerball.ts": "./src/tools/soccerball_tools.ts",
+    "./tools/dag_soccerball.ts": "./src/tools/dag_soccerball_tools.ts",
     "./tools/pearl.ts": "./src/tools/pearl_tools.ts",
     "./tools/eblit.ts": "./src/tools/eblit_tools.ts",
     "./tools/substrace.ts": "./src/tools/substrace_tools.ts",
@@ -25,7 +27,8 @@
     "./src/tools/eblit_tools.ts": "./src/tools/eblit_tools.ts",
     "./src/tools/substrace_tools.ts": "./src/tools/substrace_tools.ts",
     "./src/tools/quilt_tools.ts": "./src/tools/quilt_tools.ts",
-    "./src/tools/substrate_address.ts": "./src/tools/substrate_address.ts"
+    "./src/tools/substrate_address.ts": "./src/tools/substrate_address.ts",
+    "./src/tools/dag_soccerball_tools.ts": "./src/tools/dag_soccerball_tools.ts"
   },
   "scripts": {
     "dev": "concurrently -k \"npm run dev:renderer\" \"wait-on http://127.0.0.1:5173 && npm run dev:main\"",
@@ -145,7 +148,7 @@
       "verifyUpdateCodeSignature": false
     },
     "nsis": {
-      "artifactName": "Caithedral-Core-Setup-${version}.${ext}",
+      "artifactName": "Caithedral-Core-Keystone-I-Setup.${ext}",
       "oneClick": false,
       "perMachine": false,
       "allowElevation": true,
@@ -159,7 +162,7 @@
       "runAfterFinish": true
     },
     "portable": {
-      "artifactName": "Caithedral-Core-Portable-${version}.${ext}"
+      "artifactName": "Caithedral-Core-Keystone-I-Portable.${ext}"
     },
     "mac": {
       "target": [
@@ -187,7 +190,7 @@
       "identity": null
     },
     "dmg": {
-      "title": "Caithedral Core ${version}",
+      "title": "Caithedral Core Keystone I",
       "window": {
         "width": 540,
         "height": 380

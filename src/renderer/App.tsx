@@ -12,8 +12,11 @@
  */
 
 import React, { useState } from 'react';
+import { PearlGallery } from './components/PearlGallery.js';
+import { PhoebePlane } from './components/PhoebePlane.js';
+import { WhisperBar } from './components/WhisperBar.js';
 
-type Panel = 'dashboard' | 'conjunction' | 'substrate' | 'substrated' | 'dev' | 'settings';
+type Panel = 'dashboard' | 'conjunction' | 'substrate' | 'substrated' | 'dev' | 'pearls' | 'phoebe' | 'settings';
 
 export function App() {
   const [activePanel, setActivePanel] = useState<Panel>('dashboard');
@@ -31,7 +34,7 @@ export function App() {
       }}>
         <div style={{ padding: '0 16px 20px', borderBottom: '1px solid #222' }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', letterSpacing: 1 }}>CAI™ Core</div>
-          <div style={{ fontSize: 10, color: '#666', marginTop: 2 }}>v0.1.8 · Designed to Be Copied</div>
+          <div style={{ fontSize: 10, color: '#666', marginTop: 2 }}>Keystone I · Designed to Be Copied</div>
         </div>
         <nav style={{ marginTop: 8 }}>
           {([
@@ -40,6 +43,8 @@ export function App() {
             ['substrate', 'Substrate'],
             ['substrated', '✓ Substrated'],
             ['dev', 'Banyan Metric™'],
+            ['pearls', 'Pearl Gallery™'],
+            ['phoebe', 'Phoebe™'],
             ['settings', 'Settings'],
           ] as [Panel, string][]).map(([panel, label]) => (
             <button
@@ -75,6 +80,8 @@ export function App() {
         {activePanel === 'substrate' && <SubstratePanel />}
         {activePanel === 'substrated' && <SubstratedFoldersPanel />}
         {activePanel === 'dev' && <BanyanMetricLedgerPanel />}
+        {activePanel === 'pearls' && <PearlGallery />}
+        {activePanel === 'phoebe' && <PhoebePlane />}
         {activePanel === 'settings' && <SettingsPanel />}
       </main>
     </div>
@@ -107,7 +114,7 @@ function DashboardPanel() {
         <StatCard label="License" value="SSPL-1.0" />
       </div>
       <div style={{ marginTop: 32, padding: 16, background: '#111', borderRadius: 8, fontSize: 12, color: '#666', lineHeight: 1.8 }}>
-        <strong style={{ color: '#aaa' }}>CAI™ Core v0.1.8</strong>
+        <strong style={{ color: '#aaa' }}>Caithedral Core Keystone I</strong>
         {' · '}Cooperative AI Memory Architecture
         {' · '}Reference Implementation
         {' · '}Designed to Be Copied

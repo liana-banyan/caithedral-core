@@ -40,6 +40,7 @@ import { BanyanMetricLedger } from '../banyan_metric/index.js';
 import { MoneyPennyMeter } from '../banyan_metric/money_penny.js';
 import { SubstratedFoldersManager } from './substrated_folders.js';
 import { getCfpServer } from '../mcp/federation.js';
+import { transcribe, emitVoicePearl } from './whisper-service.js';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -302,7 +303,7 @@ function setupTray(): void {
       dialog.showMessageBox({
         type: 'info',
         title: 'About CAI™ Core',
-        message: `CAI™ Core v${app.getVersion()}`,
+        message: `Caithedral™ Core Keystone I (0.2.1)`,
         detail: [
           'Cooperative AI Memory Architecture',
           'Reference Implementation · Designed to Be Copied',
@@ -472,6 +473,198 @@ function registerIpcHandlers(): void {
   ipcMain.handle('app:markFirstRunComplete', () => {
     markFirstRunComplete();
     return { ok: true };
+  });
+
+  // ── Pearl IPC (v0.1.10 · Tier AB) ────────────────────────────────────────────
+
+  /**
+   * pearl:decode-nl — decode a Pearl by canonical_ref and render via Ollama NL.
+   * Returns { pearl, nl_summary } where nl_summary is Ollama's human-readable
+   * summary of the Pearl content (Member-NL Layer 4).
+   * nl_summary is null if Ollama is unavailable — raw pearl still returned.
+   */
+  ipcMain.handle('pearl:decode-nl', async (_event, canonicalRef: string) => {
+    if (!canonicalRef || typeof canonicalRef !== 'string') {
+      return { error: 'canonical_ref is required', pearl: null, nl_summary: null };
+    }
+
+    // Step 1: Load Pearl from registry
+    const PEARL_REGISTRY_PATH = resolve(
+      CAI_CORE_HOME.replace('.cai_core', ''),
+      'Documents',
+      'LianaBanyanPlatform',
+      'Asteroid-ProofVault',
+      'pearl_registry',
+      'PEARL_REGISTRY_INDEX.json',
+    );
+
+    type PearlEntry = {
+      pearl_id: string;
+      canonical_ref: string;
+      cathedral?: string;
+      class?: string;
+      decay_class?: string;
+      wave?: string;
+      bp?: string;
+      minted_by?: string;
+      ts?: string;
+      note?: string;
+      celpane?: Record<string, string | undefined>;
+    };
+
+    let pearl: PearlEntry | null = null;
+    try {
+      const raw = readFileSync(PEARL_REGISTRY_PATH, 'utf-8');
+      const reg = JSON.parse(raw) as { pearls: PearlEntry[] };
+      pearl = reg.pearls.find(
+        (p) => p.canonical_ref === canonicalRef || p.pearl_id === canonicalRef,
+      ) ?? null;
+    } catch {
+      return { error: 'Pearl registry unavailable', pearl: null, nl_summary: null };
+    }
+
+    if (!pearl) {
+      return { error: `Pearl not found: ${canonicalRef}`, pearl: null, nl_summary: null };
+    }
+
+    // Step 2: Build content string for Ollama
+    const contentParts: string[] = [
+      `ref: ${pearl.canonical_ref}`,
+      pearl.note ? `note: ${pearl.note}` : null,
+      pearl.class ? `class: ${pearl.class}` : null,
+      pearl.cathedral ? `cathedral: ${pearl.cathedral}` : null,
+      pearl.celpane?.soul ? `soul: ${pearl.celpane.soul}` : null,
+      pearl.celpane?.heart ? `heart: ${pearl.celpane.heart}` : null,
+      pearl.celpane?.hull ? `hull: ${pearl.celpane.hull}` : null,
+    ].filter(Boolean) as string[];
+    const pearlContent = contentParts.join(' | ').slice(0, 800);
+
+    // Step 3: Ollama NL render (Layer 4 Member-NL)
+    const OLLAMA_BASE = process.env.OLLAMA_BASE ?? 'http://localhost:11434';
+    const OLLAMA_MODEL = 'llama3.2';
+    let nl_summary: string | null = null;
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+
+      const res = await fetch(`${OLLAMA_BASE}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: OLLAMA_MODEL,
+          prompt: `Summarize this cooperative knowledge record in 1-2 plain sentences:\n\n${pearlContent}`,
+          stream: false,
+          options: { num_predict: 120 },
+        }),
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeout));
+
+      if (res.ok) {
+        const data = await res.json() as { response?: string };
+        nl_summary = data.response?.trim() ?? null;
+      }
+    } catch {
+      // Ollama unavailable — nl_summary stays null; raw pearl still returned
+    }
+
+    return { pearl, nl_summary };
+  });
+
+  // ── Whisper STT (Tier AC) ─────────────────────────────────────────────────────
+
+  ipcMain.handle('whisper:transcribe', async (_event, audioBase64: string, mimeType?: string) => {
+    if (!audioBase64 || typeof audioBase64 !== 'string') {
+      return { error: 'audioBase64 is required', text: '', pearl: null };
+    }
+    try {
+      const audioBuffer = Buffer.from(audioBase64, 'base64');
+      const result = await transcribe(audioBuffer, mimeType ?? 'audio/webm');
+      if (result.error) {
+        return { error: result.error, text: '', pearl: null };
+      }
+      const pearl = result.text ? emitVoicePearl(result.text, result.duration_ms) : null;
+      return { text: result.text, duration_ms: result.duration_ms, timestamp: result.timestamp, pearl };
+    } catch (err) {
+      return { error: (err as Error).message, text: '', pearl: null };
+    }
+  });
+
+  // ── Phoebe™ (Tier AD) ─────────────────────────────────────────────────────────
+
+  type PhoebeItem = {
+    id: string; class: string; content: string; title: string;
+    url?: string; imageDataUrl?: string; cooperative: boolean; ts: string; pearl_id?: string;
+  };
+
+  const PHOEBE_STORE_PATH = join(CAI_CORE_HOME, 'phoebe_items.json');
+
+  function loadPhoebeStore(): PhoebeItem[] {
+    try {
+      if (!existsSync(PHOEBE_STORE_PATH)) return [];
+      return JSON.parse(readFileSync(PHOEBE_STORE_PATH, 'utf-8')) as PhoebeItem[];
+    } catch { return []; }
+  }
+
+  function savePhoebeStore(items: PhoebeItem[]): void {
+    try {
+      mkdirSync(CAI_CORE_HOME, { recursive: true });
+      writeFileSync(PHOEBE_STORE_PATH, JSON.stringify(items, null, 2), 'utf-8');
+    } catch { /* non-fatal */ }
+  }
+
+  ipcMain.handle('phoebe:list', () => loadPhoebeStore());
+
+  ipcMain.handle('phoebe:save', async (_event, payload: {
+    class: string; content: string; title: string;
+    url?: string; imageData?: string; cooperative: boolean;
+  }) => {
+    if (!payload?.class || !payload?.content) {
+      return { ok: false, error: 'class and content are required' };
+    }
+    const { randomUUID } = await import('crypto');
+    const newItem: PhoebeItem = {
+      id: `phoebe_${Date.now()}_${randomUUID().slice(0, 8)}`,
+      class: payload.class,
+      content: payload.content,
+      title: payload.title ?? payload.content.slice(0, 60),
+      url: payload.url,
+      imageDataUrl: payload.imageData,
+      cooperative: payload.cooperative ?? false,
+      ts: new Date().toISOString(),
+    };
+
+    const items = loadPhoebeStore();
+    items.unshift(newItem);
+    savePhoebeStore(items);
+    return { ok: true, item: newItem };
+  });
+
+  ipcMain.handle('phoebe:setCooperative', (_event, id: string, value: boolean) => {
+    const items = loadPhoebeStore();
+    const idx = items.findIndex((i) => i.id === id);
+    if (idx === -1) return { ok: false, error: 'item not found' };
+    items[idx].cooperative = value;
+    savePhoebeStore(items);
+    return { ok: true };
+  });
+
+  ipcMain.handle('pearl:list', async () => {
+    const PEARL_REGISTRY_PATH = resolve(
+      CAI_CORE_HOME.replace('.cai_core', ''),
+      'Documents',
+      'LianaBanyanPlatform',
+      'Asteroid-ProofVault',
+      'pearl_registry',
+      'PEARL_REGISTRY_INDEX.json',
+    );
+    try {
+      const raw = readFileSync(PEARL_REGISTRY_PATH, 'utf-8');
+      const reg = JSON.parse(raw) as { pearls: unknown[] };
+      return reg.pearls;
+    } catch {
+      return [];
+    }
   });
 
   // ── Deep-link ─────────────────────────────────────────────────────────────────
