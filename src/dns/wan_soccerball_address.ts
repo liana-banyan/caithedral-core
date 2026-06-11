@@ -393,7 +393,22 @@ interface PeanutRoll {
   ts: number;
 }
 
-const RELAY_BASE = "https://relay.lianabanyan.com";
+/**
+ * BP080 · SEG-WAN-2 · Option A ratify (2026-06-11)
+ * Relay is now 3 Supabase Edge Functions on project ruuxzilgmuwddcofqecc.
+ * Deploy URLs:
+ *   publish: https://ruuxzilgmuwddcofqecc.supabase.co/functions/v1/wan-relay-publish
+ *   resolve: https://ruuxzilgmuwddcofqecc.supabase.co/functions/v1/wan-relay-resolve/:sid
+ *   circuit: wss://ruuxzilgmuwddcofqecc.supabase.co/functions/v1/wan-relay-circuit/:targetSid
+ *
+ * Custom domain: relay.lianabanyan.com → Supabase Edge Functions
+ *   Supabase Dashboard → Settings → Edge Functions → Custom Domain → add relay.lianabanyan.com
+ *   Squarespace DNS: Type=CNAME, Host=relay, Points to=ruuxzilgmuwddcofqecc.supabase.co, TTL=300
+ *   Until custom domain is wired, RELAY_BASE points directly to the Supabase project URL.
+ *   Once Founder adds the custom domain via Supabase Dashboard, revert to:
+ *     const RELAY_BASE = "https://relay.lianabanyan.com";
+ */
+const RELAY_BASE = "https://ruuxzilgmuwddcofqecc.supabase.co/functions/v1";
 const BACKOFF_DELAYS_MS = [500, 1000, 2000];
 const MAX_FETCH_RETRIES = 3;
 
@@ -469,7 +484,7 @@ export async function resolveWanSoccerball(
   }
 
   const res = await fetchWithBackoff(
-    () => fetch(`${RELAY_BASE}/resolve/${encodeURIComponent(wanSoccerballId)}`),
+    () => fetch(`${RELAY_BASE}/wan-relay-resolve/${encodeURIComponent(wanSoccerballId)}`),
     "resolve",
   );
 
@@ -496,7 +511,7 @@ export async function resolveWanSoccerball(
       recordResolveFailure();
       return null;
     }
-    return { peerId, relayHint: "relay.lianabanyan.com" };
+    return { peerId, relayHint: "ruuxzilgmuwddcofqecc.supabase.co/functions/v1" };
   } catch {
     recordResolveFailure();
     return null;
@@ -527,7 +542,7 @@ export async function publishWanAddress(
 
   const res = await fetchWithBackoff(
     () =>
-      fetch(`${RELAY_BASE}/publish`, {
+      fetch(`${RELAY_BASE}/wan-relay-publish`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(roll),
