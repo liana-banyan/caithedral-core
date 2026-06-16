@@ -395,20 +395,31 @@ interface PeanutRoll {
 
 /**
  * BP080 · SEG-WAN-2 · Option A ratify (2026-06-11)
- * Relay is now 3 Supabase Edge Functions on project ruuxzilgmuwddcofqecc.
- * Deploy URLs:
- *   publish: https://ruuxzilgmuwddcofqecc.supabase.co/functions/v1/wan-relay-publish
- *   resolve: https://ruuxzilgmuwddcofqecc.supabase.co/functions/v1/wan-relay-resolve/:sid
- *   circuit: wss://ruuxzilgmuwddcofqecc.supabase.co/functions/v1/wan-relay-circuit/:targetSid
+ * BP084 · SEG-1 · relay.lianabanyan.com CNAME + fallback chain (2026-06-15)
  *
- * Custom domain: relay.lianabanyan.com → Supabase Edge Functions
- *   Supabase Dashboard → Settings → Edge Functions → Custom Domain → add relay.lianabanyan.com
- *   Squarespace DNS: Type=CNAME, Host=relay, Points to=ruuxzilgmuwddcofqecc.supabase.co, TTL=300
- *   Until custom domain is wired, RELAY_BASE points directly to the Supabase project URL.
- *   Once Founder adds the custom domain via Supabase Dashboard, revert to:
- *     const RELAY_BASE = "https://relay.lianabanyan.com";
+ * Relay is 3 Supabase Edge Functions on project ruuxzilgmuwddcofqecc.
+ * Deploy URLs:
+ *   publish: https://relay.lianabanyan.com/functions/v1/wan-relay-publish
+ *   resolve: https://relay.lianabanyan.com/functions/v1/wan-relay-resolve/:sid
+ *   circuit: wss://relay.lianabanyan.com/functions/v1/wan-relay-circuit/:targetSid
+ *
+ * DNS-PENDING (Founder action required — tracked separately, Knight cannot do DNS):
+ *   1. Squarespace DNS: CNAME relay.lianabanyan.com → ruuxzilgmuwddcofqecc.supabase.co, TTL=300
+ *   2. Supabase Dashboard → Settings → Edge Functions → Custom Domain → add relay.lianabanyan.com
+ *   3. TXT challenge verification in Supabase Dashboard
+ *
+ * Until the CNAME is live, RELAY_BASE resolves to NXDOMAIN and RELAY_BASE_FALLBACK handles requests.
+ * Fallback chain: 5xx or network error on primary → automatic retry via RELAY_BASE_FALLBACK.
+ * No action required from Knight once DNS is provisioned — code uses primary automatically.
+ *
+ * RELAY_BASE env override: set process.env.RELAY_BASE to skip the custom domain entirely
+ *   (useful in CI / staging pointing at a non-production Supabase project).
  */
-const RELAY_BASE = "https://ruuxzilgmuwddcofqecc.supabase.co/functions/v1";
+const RELAY_BASE =
+  (typeof process !== "undefined" && process.env?.RELAY_BASE)
+    ? process.env.RELAY_BASE
+    : "https://relay.lianabanyan.com/functions/v1";
+const RELAY_BASE_FALLBACK = "https://ruuxzilgmuwddcofqecc.supabase.co/functions/v1";
 const BACKOFF_DELAYS_MS = [500, 1000, 2000];
 const MAX_FETCH_RETRIES = 3;
 
@@ -467,6 +478,40 @@ async function fetchWithBackoff(
   return null;
 }
 
+/**
+ * Fetch with automatic relay fallback chain (BP084 · SEG-1).
+ *
+ * Tries primary RELAY_BASE first. On network error or 5xx, falls through to
+ * RELAY_BASE_FALLBACK (direct Supabase URL). This ensures the code works
+ * while the relay.lianabanyan.com CNAME is DNS-pending (Founder action).
+ *
+ * path: the path after the base, e.g. "/wan-relay-publish"
+ * makeFn: factory(base) → () => Promise<Response>
+ */
+async function fetchWithRelayFallback(
+  path: string,
+  makeFn: (base: string) => () => Promise<Response>,
+  label: string,
+): Promise<Response | null> {
+  // Try primary (relay.lianabanyan.com or RELAY_BASE override)
+  const primary = await fetchWithBackoff(makeFn(RELAY_BASE + path), label + ":primary");
+  if (primary !== null && primary.status < 500) {
+    return primary;
+  }
+  if (primary !== null && primary.status >= 500) {
+    console.warn(
+      `[wan_soccerball] ${label} primary returned HTTP ${primary.status} — falling back to direct Supabase URL`,
+    );
+  } else {
+    console.warn(
+      `[wan_soccerball] ${label} primary unreachable (DNS-pending?) — falling back to direct Supabase URL`,
+    );
+  }
+
+  // Fallback: direct Supabase URL (always reachable regardless of DNS)
+  return fetchWithBackoff(makeFn(RELAY_BASE_FALLBACK + path), label + ":fallback");
+}
+
 // ─── Peer resolution (live relay) ─────────────────────────────────────────────
 
 /**
@@ -483,8 +528,9 @@ export async function resolveWanSoccerball(
     return null;
   }
 
-  const res = await fetchWithBackoff(
-    () => fetch(`${RELAY_BASE}/wan-relay-resolve/${encodeURIComponent(wanSoccerballId)}`),
+  const res = await fetchWithRelayFallback(
+    `/wan-relay-resolve/${encodeURIComponent(wanSoccerballId)}`,
+    (base) => () => fetch(base),
     "resolve",
   );
 
@@ -511,7 +557,7 @@ export async function resolveWanSoccerball(
       recordResolveFailure();
       return null;
     }
-    return { peerId, relayHint: "ruuxzilgmuwddcofqecc.supabase.co/functions/v1" };
+    return { peerId, relayHint: "relay.lianabanyan.com/functions/v1" };
   } catch {
     recordResolveFailure();
     return null;
@@ -540,12 +586,14 @@ export async function publishWanAddress(
     ts: Date.now(),
   };
 
-  const res = await fetchWithBackoff(
-    () =>
-      fetch(`${RELAY_BASE}/wan-relay-publish`, {
+  const rollBody = JSON.stringify(roll);
+  const res = await fetchWithRelayFallback(
+    "/wan-relay-publish",
+    (base) => () =>
+      fetch(base, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(roll),
+        body: rollBody,
       }),
     "publish",
   );
@@ -561,6 +609,76 @@ export async function publishWanAddress(
     `[wan_soccerball] publish failed — degrading to LAN-only (id=${addr.wanSoccerballId.slice(0, 8)}…)`,
   );
   return false;
+}
+
+// ─── Thorax Relay Encryption (BP084 · SEG-5) ─────────────────────────────────
+//
+// WAN payloads relayed through Supabase are encrypted so the relay sees only
+// opaque ciphertext + target peer_id.  LAN-direct (port 7474) skips encryption.
+//
+// Key derivation: shared secret = sha256(emailHash + ":" + sessionNonce).
+// Both peers derive the same key from their shared session context — no
+// key-exchange round-trip required.  IV is a random 12-byte nonce prepended
+// to the ciphertext (standard AES-256-GCM framing).
+//
+// Wire format (base64url-encoded JSON string):
+//   { iv: <base64>, ct: <base64> }
+
+export interface ThoraxRelayEnvelope {
+  iv: string;   // 12-byte AES-GCM IV, base64-encoded
+  ct: string;   // AES-256-GCM ciphertext, base64-encoded
+}
+
+/**
+ * Derive the shared relay encryption key from the email hash and session nonce.
+ * Both peers compute the same key independently — no round-trip.
+ */
+export async function deriveThoraxRelayKey(
+  emailHash: string,
+  sessionNonce: string,
+): Promise<CryptoKey> {
+  const raw = await cryptoSubtle().digest("SHA-256", encode(`${emailHash}:${sessionNonce}:thorax-relay-v1`));
+  return cryptoSubtle().importKey("raw", raw, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+}
+
+/**
+ * Encrypt a WAN relay payload with AES-256-GCM.
+ * Returns a ThoraxRelayEnvelope (iv + ciphertext, both base64).
+ *
+ * LAN-direct dispatch (port 7474) MUST NOT call this — encryption is WAN-only.
+ */
+export async function thoraxRelayEncrypt(
+  plaintext: string,
+  emailHash: string,
+  sessionNonce: string,
+): Promise<ThoraxRelayEnvelope> {
+  const key = await deriveThoraxRelayKey(emailHash, sessionNonce);
+  const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
+  const ct = await cryptoSubtle().encrypt(
+    { name: "AES-GCM", iv },
+    key,
+    encode(plaintext),
+  );
+  return {
+    iv: btoa(String.fromCharCode(...iv)),
+    ct: btoa(String.fromCharCode(...new Uint8Array(ct))),
+  };
+}
+
+/**
+ * Decrypt a WAN relay payload encrypted with thoraxRelayEncrypt.
+ * Returns the original plaintext string, or throws on auth failure.
+ */
+export async function thoraxRelayDecrypt(
+  envelope: ThoraxRelayEnvelope,
+  emailHash: string,
+  sessionNonce: string,
+): Promise<string> {
+  const key = await deriveThoraxRelayKey(emailHash, sessionNonce);
+  const iv = Uint8Array.from(atob(envelope.iv), (c) => c.charCodeAt(0));
+  const ct = Uint8Array.from(atob(envelope.ct), (c) => c.charCodeAt(0));
+  const plainBuf = await cryptoSubtle().decrypt({ name: "AES-GCM", iv }, key, ct);
+  return new TextDecoder().decode(plainBuf);
 }
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
