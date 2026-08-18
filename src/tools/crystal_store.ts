@@ -12,7 +12,9 @@
  * reading the reference module's source (not by reasoning about what it "should" do).
  * The point of matching bit-for-bit is that BOTH sides -- mnemosyne's Electron app and
  * this MCP server -- resolve to, and can safely share, the SAME on-disk file:
- *   %APPDATA%\amplify-computer\crystal\crystal_log.jsonl
+ *   %APPDATA%\MnemosyneC\crystal\crystal_log.jsonl
+ * (D-BP158-012: userData app-name segment migrated amplify-computer -> MnemosyneC per
+ * Founder ruling; see C:\Users\Administrator\Documents\mnemosyne\src\main\index.ts line 73.)
  *
  * RULING 1 (path resolution) and RULING 2 (pearls-only address) are Bishop's, final,
  * and are not re-opened here — see the D-BP147-006 dispatch text for the ruling itself.
@@ -30,7 +32,7 @@ import { existsSync, mkdirSync, appendFileSync, readFileSync } from "fs";
 import { resolve, join } from "path";
 import { createHash } from "crypto";
 
-const USERDATA_APP_NAME = "amplify-computer";
+const USERDATA_APP_NAME = "MnemosyneC";
 
 export interface BindingTarget {
   targetType: string;
@@ -63,7 +65,7 @@ export class CrystalPathError extends Error {}
 /**
  * resolveCrystalDir — RULING 1, the exact 3-step rule:
  *   1. process.env.MNEM_CRYSTAL_DIR — absolute override, wins outright if set.
- *   2. Windows: %APPDATA%\amplify-computer\crystal, computed directly from
+ *   2. Windows: %APPDATA%\MnemosyneC\crystal, computed directly from
  *      process.env.APPDATA — no Electron dependency required or used.
  *   3. HARD ERROR. Never a silent cwd-relative fallback.
  * This function itself throws/fails loudly. It does not swallow the error — fail-open
